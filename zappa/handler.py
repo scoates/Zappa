@@ -305,6 +305,28 @@ class LambdaHandler(object):
 
         return None
 
+    def get_function_kwargs_for_aws_event(self, record):
+        """
+        Get the associated function kwargs to attach to the triggered event
+        """
+        arn = None
+        if 'Sns' in record:
+            try:
+                message = json.loads(record['Sns']['Message'])
+                if message.get('command'):
+                    return message['command']
+            except ValueError:
+                pass
+            arn = record['Sns'].get('TopicArn')
+        elif 'dynamodb' in record or 'kinesis' in record:
+            arn = record.get('eventSourceARN')
+
+        if arn:
+            return self.settings.AWS_EVENT_MAPPING_KWARGS.get(arn)
+
+        return None
+
+
     def handler(self, event, context):
         """
         An AWS Lambda function which parses specific API Gateway input into a
@@ -385,6 +407,9 @@ class LambdaHandler(object):
             result = None
             whole_function = self.get_function_for_aws_event(records[0])
             if whole_function:
+                kwargs = self.get_function_kwargs_for_aws_event(records[0])
+                if kwargs:
+                    event['kwargs'] = kwargs
                 app_function = self.import_module_and_get_function(whole_function)
                 result = self.run_function(app_function, event, context)
                 logger.debug(result)
