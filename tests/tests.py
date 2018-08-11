@@ -1839,5 +1839,22 @@ USE_TZ = True
         self.assertEqual(expected, transformed)
 
 
+    def test_package_wrong_pyc(self):
+
+        cwd = os.getcwd()
+
+        os.chdir(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'app_for_broken_pyc'))
+
+        zappa_cli = ZappaCLI()
+        zappa_cli.api_stage = 'test'
+        zappa_cli.load_settings('zappa_settings.json')
+        # make sure the .pyc fails (there's a pyc for both 3.6 and 2.7)
+        with self.assertRaises(OSError):
+            zappa_cli.package()
+        zappa_cli.on_exit()  # simulate the command exits
+
+        # change back to the main directory
+        os.chdir(cwd)
+
 if __name__ == '__main__':
     unittest.main()
